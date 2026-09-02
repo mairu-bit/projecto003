@@ -18,19 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['course_id'])) {
 }
 
 $courseId = (int) $_POST['course_id'];
-$course   = get_course($pdo, $courseId);
+$result = enroll_in_course($pdo, (int) $_SESSION['user_id'], $courseId);
 
-if (!$course) {
-    $_SESSION['enroll_flash'] = ['ok' => false, 'message' => 'ไม่พบหลักสูตรนี้'];
-    header('Location: index.php#courses');
-    exit;
-}
-
-$success = enroll_in_course($pdo, (int) $_SESSION['user_id'], $courseId);
-
-$_SESSION['enroll_flash'] = $success
-    ? ['ok' => true, 'message' => 'ลงทะเบียนหลักสูตร "' . $course['title'] . '" เรียบร้อยแล้ว']
-    : ['ok' => true, 'message' => 'คุณลงทะเบียนหลักสูตรนี้ไว้อยู่แล้ว'];
+$_SESSION['enroll_flash'] = [
+    'ok'      => $result['ok'],
+    'message' => $result['message']
+];
 
 header('Location: index.php#courses');
 exit;

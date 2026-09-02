@@ -12,7 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['course_id'])) {
     exit;
 }
 
-unenroll_from_course($pdo, (int) $_SESSION['user_id'], (int) $_POST['course_id']);
+$courseId = (int) $_POST['course_id'];
+unenroll_from_course($pdo, (int) $_SESSION['user_id'], $courseId);
+$_SESSION['flash_msg'] = ['type' => 'ok', 'text' => 'ยกเลิกการลงทะเบียนหลักสูตรเรียบร้อยแล้ว'];
 
 header('Location: account.php');
 exit;

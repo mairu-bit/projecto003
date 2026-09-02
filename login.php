@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_regenerate_id(true);
         $_SESSION['user_id']  = $user['id'];
         $_SESSION['username'] = $user['username'];
+        $_SESSION['fullname'] = $user['fullname'] ?? $user['username'];
         $_SESSION['role']     = $user['role'];
         header('Location: ' . ($user['role'] === 'admin' ? 'admin/dashboard.php' : 'account.php'));
         exit;

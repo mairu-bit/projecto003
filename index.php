@@ -7,7 +7,7 @@ $courses = get_all_courses($pdo);
 $labs    = get_all_labs($pdo);
 
 $isUser         = !empty($_SESSION['user_id']) && ($_SESSION['role'] ?? null) === 'user';
-$enrolledIds    = $isUser ? get_enrolled_course_ids($pdo, (int) $_SESSION['user_id']) : [];
+$userEnrolledMap = $isUser ? get_user_enrolled_map($pdo, (int) $_SESSION['user_id']) : [];
 $enrollFlash    = $_SESSION['enroll_flash'] ?? null;
 unset($_SESSION['enroll_flash']);
 ?>
@@ -16,11 +16,37 @@ unset($_SESSION['enroll_flash']);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>แผนกวิชาช่างยนต์</title>
+<title>แผนกวิชาช่างยนต์ — AUTOMOTIVE TECHNOLOGY DEPT.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
+<style>
+/* Status Badges */
+.status-badge{
+  display:inline-block; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:12px;
+  text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;
+}
+.badge-pending{ background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.35); }
+.badge-confirmed{ background:rgba(63,191,114,0.12); color:#3fbf72; border:1px solid rgba(63,191,114,0.35); }
+.badge-completed{ background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.35); }
+.badge-cancelled{ background:rgba(255,90,68,0.1); color:#ff5a44; border:1px solid rgba(255,90,68,0.3); }
+
+.course-meta {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,255,255,0.1);
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.course-meta-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+</style>
 </head>
 <body>
 
@@ -133,29 +159,63 @@ unset($_SESSION['enroll_flash']);
       <p>สี่กลุ่มวิชาหลักที่ครอบคลุมงานช่างยนต์ตั้งแต่ต้นจนถึงระบบยานยนต์สมัยใหม่</p>
     </div>
     <?php if ($enrollFlash): ?>
-      <p style="margin-bottom:24px; padding:12px 16px; border-radius:4px; font-size:14px; max-width:520px;
-                background:rgba(63,191,114,0.1); border:1px solid rgba(63,191,114,0.35); color:#7fe0a0;">
+      <p style="margin-bottom:24px; padding:12px 16px; border-radius:4px; font-size:14px; max-width:560px;
+                background:<?= $enrollFlash['ok'] ? 'rgba(63,191,114,0.1)' : 'rgba(255,90,68,0.1)' ?>; 
+                border:1px solid <?= $enrollFlash['ok'] ? 'rgba(63,191,114,0.35)' : 'rgba(255,90,68,0.35)' ?>; 
+                color:<?= $enrollFlash['ok'] ? '#7fe0a0' : '#ff7b6b' ?>;">
         <?= e($enrollFlash['message']) ?>
       </p>
     <?php endif; ?>
     <div class="course-grid">
-      <?php foreach ($courses as $course): ?>
+      <?php foreach ($courses as $course): 
+        $cid = (int)$course['id'];
+        $activeCount = get_active_enrollment_count($pdo, $cid);
+        $maxSeats = (int)($course['max_seats'] ?? 30);
+        $isFull = ($maxSeats > 0 && $activeCount >= $maxSeats);
+        $userStatus = $userEnrolledMap[$cid] ?? null;
+      ?>
       <div class="course-card">
         <div class="course-num"><?= e($course['spec_no']) ?></div>
         <svg class="course-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6"><?= $course['icon_svg'] /* trusted markup, edited only via admin */ ?></svg>
         <h3><?= e($course['title']) ?></h3>
         <p><?= e($course['description']) ?></p>
 
-        <?php if (in_array((int)$course['id'], $enrolledIds, true)): ?>
-          <div style="margin-top:16px; font-size:13px; color:var(--orange); font-weight:600;">✓ ลงทะเบียนแล้ว</div>
-        <?php elseif ($isUser): ?>
-          <form method="post" action="enroll.php" style="margin-top:16px;">
-            <input type="hidden" name="course_id" value="<?= $course['id'] ?>">
-            <button type="submit" class="btn btn-primary" style="border:none; cursor:pointer; padding:10px 20px; font-size:13px;">ลงทะเบียนเรียน</button>
-          </form>
-        <?php elseif (empty($_SESSION['user_id'])): ?>
-          <a href="login.php" style="display:inline-block; margin-top:16px; font-size:13px; color:var(--orange);">เข้าสู่ระบบเพื่อลงทะเบียน →</a>
-        <?php endif; ?>
+        <!-- Course Meta: Dates & Seat Quotas -->
+        <div class="course-meta">
+          <div class="course-meta-item">
+            <span>📅 ช่วงเวลา:</span>
+            <span style="color:#d8d9de;"><?= format_date_range($course['start_date'], $course['end_date']) ?></span>
+          </div>
+          <div class="course-meta-item">
+            <span>👥 ที่นั่ง:</span>
+            <span style="color:<?= $isFull ? 'var(--danger)' : '#d8d9de' ?>; font-weight:500;">
+              <?= $activeCount ?> / <?= $maxSeats > 0 ? $maxSeats : 'ไม่จำกัด' ?> ที่นั่ง
+              <?php if ($isFull): ?><span style="color:var(--danger); font-size:11px;">(เต็ม)</span><?php endif; ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- Action / Status -->
+        <div style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <?php if ($userStatus && $userStatus !== 'cancelled'): ?>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:12.5px; color:var(--text-dim);">สถานะ:</span>
+              <?= status_badge($userStatus) ?>
+            </div>
+            <a href="account.php?tab=courses" style="font-size:12px; color:var(--orange);">ดูในบัญชี →</a>
+          <?php elseif ($isUser): ?>
+            <?php if ($isFull): ?>
+              <button disabled class="btn btn-outline" style="border:none; padding:9px 16px; font-size:13px; opacity:0.5; cursor:not-allowed; background:rgba(255,255,255,0.05); color:var(--text-dim);">ที่นั่งเต็มแล้ว</button>
+            <?php else: ?>
+              <form method="post" action="enroll.php" style="margin:0;">
+                <input type="hidden" name="course_id" value="<?= $course['id'] ?>">
+                <button type="submit" class="btn btn-primary" style="border:none; cursor:pointer; padding:9px 18px; font-size:13px;">ลงทะเบียนเรียน</button>
+              </form>
+            <?php endif; ?>
+          <?php elseif (empty($_SESSION['user_id'])): ?>
+            <a href="login.php" style="display:inline-block; font-size:13px; color:var(--orange);">เข้าสู่ระบบเพื่อลงทะเบียน →</a>
+          <?php endif; ?>
+        </div>
       </div>
       <?php endforeach; ?>
       <?php if (!$courses): ?>

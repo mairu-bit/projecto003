@@ -14,8 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
         'spec_no'     => trim($_POST['spec_no'] ?? ''),
         'title'       => trim($_POST['title'] ?? ''),
-        'description' => trim($_POST['description'] ?? ''), // 
+        'description' => trim($_POST['description'] ?? ''),
         'icon_svg'    => trim($_POST['icon_svg'] ?? ''),
+        'max_seats'   => (int) ($_POST['max_seats'] ?? 30),
+        'start_date'  => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+        'end_date'    => !empty($_POST['end_date']) ? $_POST['end_date'] : null,
         'sort_order'  => (int) ($_POST['sort_order'] ?? 0),
     ];
 
@@ -43,28 +46,49 @@ require __DIR__ . '/includes/admin_header.php';
 
 <div class="admin-card">
   <form method="post" class="form-grid">
-    <div>
-      <label>รหัสหลักสูตร (เช่น SPEC · 01)</label>
-      <input type="text" name="spec_no" value="<?= e($course['spec_no'] ?? '') ?>">
+    <div style="display:grid; grid-template-columns:1fr 2fr; gap:14px;">
+      <div>
+        <label>รหัสหลักสูตร (เช่น SPEC · 01)</label>
+        <input type="text" name="spec_no" value="<?= e($course['spec_no'] ?? '') ?>" placeholder="SPEC · 01">
+      </div>
+      <div>
+        <label>ชื่อหลักสูตร <span style="color:var(--orange);">*</span></label>
+        <input type="text" name="title" value="<?= e($course['title'] ?? '') ?>" required>
+      </div>
     </div>
+
     <div>
-      <label>ชื่อหลักสูตร</label>
-      <input type="text" name="title" value="<?= e($course['title'] ?? '') ?>" required>
-    </div>
-    <div>
-      <label>คำอธิบาย</label>
+      <label>คำอธิบายหลักสูตร</label>
       <textarea name="description" rows="3" style="font-family:'Sarabun',sans-serif;"><?= e($course['description'] ?? '') ?></textarea>
     </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+      <div>
+        <label>จำนวนที่นั่งสูงสุด (คน)</label>
+        <input type="number" name="max_seats" min="1" max="1000" value="<?= e((string)($course['max_seats'] ?? 30)) ?>" required>
+      </div>
+      <div>
+        <label>วันที่เริ่มเรียน</label>
+        <input type="date" name="start_date" value="<?= e($course['start_date'] ?? '') ?>">
+      </div>
+      <div>
+        <label>วันที่สิ้นสุด</label>
+        <input type="date" name="end_date" value="<?= e($course['end_date'] ?? '') ?>">
+      </div>
+    </div>
+
     <div>
       <label>ไอคอน (SVG markup ภายใน &lt;svg&gt;, viewBox 0 0 48 48) — ปล่อยว่างได้</label>
-      <textarea name="icon_svg" rows="4"><?= e($course['icon_svg'] ?? '') ?></textarea>
+      <textarea name="icon_svg" rows="3" style="font-family:monospace;"><?= e($course['icon_svg'] ?? '') ?></textarea>
     </div>
+
     <div>
       <label>ลำดับการแสดงผล</label>
-      <input type="number" name="sort_order" value="<?= e((string)($course['sort_order'] ?? 0)) ?>">
+      <input type="number" name="sort_order" value="<?= e((string)($course['sort_order'] ?? 0)) ?>" style="width:140px;">
     </div>
-    <div class="row-actions">
-      <button type="submit" class="btn btn-primary">บันทึก</button>
+
+    <div class="row-actions" style="margin-top:8px;">
+      <button type="submit" class="btn btn-primary">บันทึกหลักสูตร</button>
       <a href="courses.php" class="btn btn-outline">ยกเลิก</a>
     </div>
   </form>
